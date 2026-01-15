@@ -9,6 +9,7 @@ do *PL/SQL*: Functions, Jobs, Procedures, Triggers e Views e dessa forma, permit
 o sistema e que seja mantida a integridade dos dados no banco, sendo esse último ponto, muito importante.
 
 **-** as pastas têm a seguinte organização: 
+
 ➡️ /modelagem: contém as pastas referentes às modelagens 'Conceitual', 'Lógica' e 'Física' o qual em cada uma delas você encontrará arquivos imagens identificados com as tabelas presentes no determinado arquivo. 
 
 ➡️ /recursos: contém as pastas para cada recurso e os arquivos .sql dos scripts escritos para criar cada funcionalidade do banco de dados proposto nesse projeto. 
@@ -18,6 +19,7 @@ o sistema e que seja mantida a integridade dos dados no banco, sendo esse últim
 ### 🎯 *Este projeto* teve como objetivo aprofundar os conhecimentos relacionados a Banco de Dados, Linguagem SQL e Recursos ORACLE/PL/SQ ao propor um sistema que pudesse centralizar regras de negócios de uma unidade esportiva ou rede de academias em um banco de dados próprio.
 
 ### 📚 *Com este trabalho* tive a oportunidade de aprofundar um pouco mais meus conhecimentos na linguagem SQL, desta vez focado na escrita de recursos do PL/SQL, contribuindo assim para o entendimento de lógicas mais complexas dessa linguagem além de reforçar a importância da organização procedural de criação dos scripts e da documentação do material de trabalho.
+
 
 
 
