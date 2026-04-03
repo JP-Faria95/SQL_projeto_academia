@@ -1,0 +1,26 @@
+/*
+A view vw_profs_aniversario tem como objetivo trazer informações a respeito dos professores, incluindo dia e mês do aniversário.
+
+Essa view utiliza apenas a tabela 'professores' e é usada em outros recursos para verificar professores aniversariantes em cada mês.
+
+Exemplos de uso dessa view:
+-> Trazer todos os professores que fazem aniversario no primeiro semestre:
+select * from vw_profs_aniversario where mes_aniversario between 1 and 6;
+
+-> Trazer o nome, a idade e o mes de aniversario de todos os professores do sexo feminino que tenham mais de 40 anos e que façam aniversario em meses pares:
+select nome, idade, mes_aniversario from vw_profs_aniversario where sexo = 'F' and idade > 40 and mod(mes_aniversario,2) = 0;
+
+-> Trazer os professores que farão aniversário nos dias dos jogos do Brasil na Copa do Mundo de 2026 (supondo 5/07, 8/07, 12/07 e 16/07):
+select * from vw_profs_aniversario where dia_aniversario in (5,8,12,16) and mes_aniversario = 7;
+*/
+
+create or replace view vw_profs_aniversario as
+	select
+		id_prof,
+		nome,
+		dt_nasc,
+		idade,
+		sexo,
+		extract(day from dt_nasc) as dia_aniversario,
+		extract(month from dt_nasc) as mes_aniversario
+	from PROFESSORES;

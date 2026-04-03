@@ -1,0 +1,55 @@
+/*
+A procedure pd_aluno_recompensa_resgate tem como objetivo atualizar o registro de resgates dos alunos e seus respectivos pontos.
+
+Ela recebe como parâmetros: O Id do aluno e o Id da recompensa.
+
+Ao longo da execução, as seguintes variáveis são definidas: 
+-> pd_recompensa_nome: Guarda o nome da recompensa que está sendo resgatada, para melhorar a exibição.
+-> pd_custa_pontos: Guarda a quantidade de pontos que a recompensa escolhida custa.
+-> pd_aluno_nome: Guarda o nome do aluno para melhorar a exibição.
+-> pd_aluno_pontos_total: Guarda a quantidade atualizada de pontos que o aluno possui após o resgate.
+
+A procedure faz as seguintes verificações:
+1) Ela faz o insert do resgate na tabela 'resgates' adicionando o aluno e a recompensa regatada, bem como a data do resgate.
+2) Busca na tabela 'recompensa' o nome da recompensa e seu custo de pontos, para melhorar a exibição e controlar a atualização de pontos do aluno.
+3) Atualiza a quantidade de pontos total do aluno após o resgate.
+4) Busca o nome do aluno e a quantidade atualizada de pontos, para melhorar a exibição.
+
+*/
+
+create or replace procedure pd_aluno_recompensa_resgate
+	(
+		pd_id_aluno        in number,
+		pd_id_recompensa   in number
+	) as
+		pd_recompensa_nome    varchar2(100);
+		pd_custa_pontos       number;
+		pd_aluno_nome         varchar2(100);
+		pd_aluno_pontos_total number;
+	begin
+		-- Insere o novo resgate do aluno
+		insert into RESGATES (DT_RESGATE, ID_ALUNO, ID_RECOMPENSA)
+		values (sysdate, pd_id_aluno, pd_id_recompensa);
+
+		-- Busca o nome e a quantidade de pontos que aquela recompensa custa
+		select a.recompensa, a.custa_pontos into pd_recompensa_nome, pd_custa_pontos
+		from RECOMPENSAS a
+		where a.id_recompensa = pd_id_recompensa;
+
+		-- Atualiza a quantidade de pontos do aluno
+		update PONTOS
+		set pontos_total = pontos_total - pd_custa_pontos,
+			dt_atualizado = sysdate
+		where id_aluno = pd_id_aluno;
+
+		-- Busca o nome do aluno e a quantidade de pontos após a atualização
+		select a.nome, b.pontos_total into pd_aluno_nome, pd_aluno_pontos_total
+		from ALUNOS a
+		join PONTOS b on a.id_aluno = b.id_aluno
+		where a.id_aluno = pd_id_aluno
+			and b.id_aluno = pd_id_aluno;
+
+		dbms_output.put_line('Resgate da recompensa ' ||pd_recompensa_nome|| ' realizado.
+							 O aluno ' ||pd_aluno_nome|| ' agora tem ' ||pd_aluno_pontos_total|| ' pontos.');
+
+	end pd_aluno_recompensa_resgate;

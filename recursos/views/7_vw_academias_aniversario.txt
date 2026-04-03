@@ -1,0 +1,26 @@
+/*
+A view vw_academias_aniversario tem como objetivo trazer informações a respeito das unidades cadastradas no banco de dados.
+
+Ela utiliza a tabela 'academias' e é utilizada em outros recursos para tratar sobre as unidades aniversáriantes de cada mês.
+
+Exemplo de uso da view:
+-> Trazer todas as academias, organizadas por idade:
+select * from vw_academias_aniversario order by idade desc;
+
+-> Trazer as academias que já completaram 5 ou mais anos desde sua inauguração:
+select * from vw_academias_aniversario where idade >= 5;
+
+-> Trazer as academias da cidade de São Paulo que foram inauguradas no ano de 2025:
+select * from vw_academias_aniversario where cidade = 'Sao Paulo' and dt_inaugurada >= date '01/01/2025' and dt_inaugurada <= date '31/12/2025'; 
+*/
+
+create or replace view vw_academias_aniversario as
+	select
+		id_acad,
+		cidade,
+		bairro,
+		dt_inaugurada,
+		idade,
+		extract(day from dt_inaugurada) as dia_aniversario,
+		extract(month from dt_inaugurada) as mes_aniversario
+	from ACADEMIAS;

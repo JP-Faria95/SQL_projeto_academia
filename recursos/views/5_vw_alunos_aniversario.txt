@@ -1,0 +1,29 @@
+/*
+A view vw_alunos_aniversario tem como objetivo trazer informações a respeito dos alunos matriculados.
+
+Ela une as tabelas 'alunos', 'matriculas' e 'planos'.
+
+Exemplos de uso da view:
+-> Trazer uma lista dos alunos aniversariantes do mês de dezembro;
+select * from vw_alunos_aniversario where mes_aniversario = 12;
+
+-> Trazer todos os alunos, por ID, que fazem aniversario em dias pares de qualquer mês:
+select id_aluno from vw_alunos_aniversario where mod(dia_aniversario,2) = 0 order by id_aluno;
+
+-> Trazer todos os alunos que pagam pelo menos 100 R$ pela sua matrícula e tem entre 20 e 25 anos:
+select * from vw_alunos_aniversario where valor_R$ >= 100 and idade between 20 and 25;
+*/
+
+create or replace view vw_alunos_aniversario as
+	select
+		a.id_aluno,
+		a.nome,
+		a.dt_nasc,
+		a.idade,
+		extract(day from a.dt_nasc) as dia_aniversario,
+		extract(month from a.dt_nasc) as mes_aniversario,
+		b.id_matricula,
+		c.valor_R$
+	from ALUNOS a
+	join MATRICULAS b on a.id_aluno = b.id_aluno
+	join PLANOS c on b.id_plano = c.id_plano;

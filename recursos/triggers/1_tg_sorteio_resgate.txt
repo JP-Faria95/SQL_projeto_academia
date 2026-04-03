@@ -1,0 +1,12 @@
+/*
+A trigger tg_sorteio_resgate tem como função automatizar a chamada da procedure 'pd_aluno_recompensa_resgate' sempre que houver o update da coluna 'finalizado'
+para igual a 1 (que significa que a recompensa do sorteio foi resgatada pelo aluno sorteado) na tabela 'sorteios'.
+*/
+
+create or replace trigger tg_sorteio_resgate
+	after update of finalizado on SORTEIOS
+	for each row
+	when (new.finalizado = 1)
+	begin
+		pd_aluno_recompensa_resgate(:NEW.id_aluno, :NEW.id_recompensa);
+	end tg_sorteio_resgate;

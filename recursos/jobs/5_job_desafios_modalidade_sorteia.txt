@@ -1,0 +1,53 @@
+/*
+O job job_desafios_modalidade_sorteia foi programado para ser executado mensalmente sempre no primeiro dia do mês e sua execução realiza o sorteio de uma modalidade
+para ser a bônus daquele mês, e assim garantir mais pontos para os alunos que treinarem essa modalidade.
+
+Sua execução, busca na tabela de modalidades aquelas que estão com modo bonus igual a 'N', para evitar escolher modalidades iguais consecutivamente. 
+
+Utilizando o pacote de randomização de valores, o 'dbms_random', atribuimos valores para cada linha obtida pela query, e a primeira é escolhida como modalidade
+bônus naquele mês. Além de atualizar o estado de bônus da modalidade para 'S', volta o estado para 'N' da modalidade anterior. 
+*/
+
+begin
+	dbms_scheduler.create_job
+	(
+		job_name        => 'job_desafio_modalidade_sorteia',
+		job_type        => 'plsql_block',
+		job_action      =>
+			q'[
+				declare
+					job_modalidade_id   number;
+					job_modalidade_nome varchar2(100);
+				begin
+
+					-- Seleciona uma nova modalidade bonus
+					select a.id_modalidade , a.modalidade into job_modalidade_id, job_modalidade_nome
+					from (select id_modalidade, modalidade
+						  from MODALIDADES
+						  where bonus = 'N'
+						  order by dbms_random.value
+						 ) a
+					where rownum = 1;
+
+					-- Reseta a modalidade bonus do mês passado
+					update MODALIDADES
+					set bonus = 'N'
+					where bonus = 'S';
+
+					-- Atualiza a modalidade bonus do mês atual
+					update MODALIDADES
+					set bonus = 'S'
+					where id_modalidade = job_modalidade_id;
+
+					commit;
+
+					dbms_output.put_line('Modalidade bênus desse mês: '||job_modalidade_nome|| '.');
+
+				end;
+			]',
+		start_date      => trunc(add_months(sysdate,1),'MM'),
+		repeat_interval => 'freq=monthly; bymonthday=1; byhour=0; byminute=0; bysecond=0',
+		enabled         => true,
+		comments        => 'Escolhe todo dia 1 uma nova modalidade bônus'
+	);
+end;

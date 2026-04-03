@@ -1,0 +1,65 @@
+/*
+A procedure pd_sorteios_realiza tem como objetivo realizar o sorteio de alunos para uma determinada recompensa.
+
+Ela recebe como parâmetro o Id da recompensa previamente sorteada pelo job 'job_sorteio_recompensa_escolhe'.
+
+Ao longo de sua execução, as seguintes variáveis são definidas:
+-> pd_id_aluno: Guarda o id do aluno sorteado que possui os pontos necessários para resgatar a recompensa.
+-> pd_aluno_nome: Guarda o nome do aluno, facilitando a exibição.
+-> pd_pontos_custo: Guarda a quantidade de pontos que a recompensa custa para ser resgatada.
+-> pd_recompensa_nome: Guarda o nome da recompensa, facilitando a exibição.
+
+Ainda durante a execução da procedure, as seguintes verificações são realizadas:
+1) Verifica o nome e o custo da recompensa, para guardar nas variaveis de exibição e de controle.
+2) Utilizando uma query com subquery, fazemos a busca nas tabelas 'pontos' e 'alunos' pelos alunos que possuem o minimo de pontos para retirar a recompensa.
+3) Pode acontecer de nenhum aluno possuir os pontos minimos, ntão utilizamos uma mensagem de exibição para esse cenário.
+4) Sorteado o aluno, registramos na tabela de 'sorteios' com a coluna 'finalizado' = 0, representando que a recompensa ainda não foi resgatada pelo aluno sorteado.
+
+*/
+
+create or replace procedure pd_sorteios_realiza
+	(
+		pd_id_recompensa in number
+	) as
+		pd_id_aluno        number;
+		pd_aluno_nome      varchar2(100);
+		pd_pontos_custo    number;
+		pd_recompensa_nome varchar2(200);
+
+	begin
+
+		-- Verifica o nome e quantos pontos custa a recompesa que será sorteada
+			select a.recompensa, a.custa_pontos into pd_recompensa_nome, pd_pontos_custo
+			from vw_recompensas_lista a
+			where a.id_recompensa = pd_id_recompensa;
+
+		-- Faz um sorteio dentre os alunos que tenham pontos suficientes para participar
+			begin
+
+				select a.id_aluno, b.nome into pd_id_aluno, pd_aluno_nome
+				from (
+					  select id_aluno
+					  from PONTOS b
+					  where b.pontos_total >= pd_pontos_custo
+					  order by dbms_random.value
+					 ) a
+				join ALUNOS b on a.id_aluno = b.id_aluno
+				where rownum = 1;
+
+			exception
+
+				when no_data_found then
+					dbms_output.put_line('Nenhum aluno possui pontos suficientes.');
+					return;
+
+			end;
+
+		-- Registra o sorteio na tabela SORTEIOS
+			insert into SORTEIOS (DT_REALIZADO, ID_RECOMPENSA, ID_ALUNO, FINALIZADO)
+			values (sysdate, pd_id_recompensa, pd_id_aluno, 0);
+
+			commit;
+
+			dbms_output.put_line('Sorteio realizado! Prêmio: ' ||pd_recompensa_nome|| '. Sorteado: '||pd_aluno_nome);
+
+	end pd_sorteios_realiza;

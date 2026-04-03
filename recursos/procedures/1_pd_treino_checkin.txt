@@ -1,0 +1,112 @@
+/*
+A procedure pd_treino_checkin tem como objetivo controlar os registros de checkin e checkout dos alunos ao entrarem nas academias.
+
+Ela recebe como parâmetros: O id do aluno e o id da academia.
+
+Ao longo da procedure, as seguintes variáveis são definidas:
+-> pd_checkin_dtentrada: Guarda o valor em formato date que representa o momento de entrada do aluno na academia.
+-> pd_checkin_duracao: Guarda o valor da duracao em minutos do tempo de permanência do aluno. O valor é obtido através da função 'fn_checkin_duracao'.
+-> pd_checkin_ultimo: Guarda o valor do ultimo checkin feito por aquele aluno. Pode ser null caso o ultimo checkin já tenha tido um checkout.
+-> pd_matricula_status: Guarda o valor 1 ou 0 se o aluno possui matrícula ativa para qualquer modalidade na academia informada.
+-> pd_pontos: Guarda o valor dos pontos que o aluno receberá por aquele checkin, podendo ser alterado ao longo da procedure.
+
+Verificações importantes que a procedure realiza durante sua execução:
+1) Verifica se o aluno que está fazendo o checkin possui uma matrícula ativa para qualquer modalidade que seja oferecida pela academia que está entrando.
+Se o aluno não possuir matricula ativa para nenhuma modalidade que aquela unidade oferece, a sua entrada é barrada.
+
+2) Verifica se já possui um checkin iniciado através da busca na tabela 'checkin' por alguma linha com data de entrada não nula e ao mesmo tempo uma data de saida
+nula para aquele aluno, o que representaria um checkin sem checkout. Se por acaso o aluno já possuir um checkin, e for a segunda chamada da procedure, então é 
+feito o checkout.
+
+3) Após o checkout é calculado o tempo de permanência do aluno, que deve ser maior que 20 minutos para que seja atribuida a pontuação referente à realização de
+um checkin bem como a atualização dos desafios referentes a checkins nas academias.
+*/
+
+create or replace procedure pd_treino_checkin (pd_id_aluno number, pd_id_acad number) as
+	pd_checkin_dtentrada date := sysdate;
+	pd_checkin_duracao   number;
+	pd_checkin_ultimo    number;
+	pd_matricula_status  number;
+	pd_pontos            number := 2;
+
+	begin
+
+		begin
+
+			-- Verificar o aluno possui qualquer matricula ativa em qualquer modalidade que a unidade oferece
+				select count(*) into pd_matricula_status
+				from MATRICULAS a
+				where a.id_aluno = pd_id_aluno
+					  and a.status = 'S'
+					  and a.id_modalidade in (select distinct id_modalidade
+											  from ACAD_HORA_PROF_MOD
+											  where id_acad = pd_id_acad
+											  union
+											  select distinct id_modalidade
+											  from ACAD_HORA_PROF_MUSC
+											  where id_acad = pd_id_acad
+											);
+
+				if pd_matricula_status = 0 then
+					dbms_output.put_line('Aluno não tem matrícula ativa na unidade.');
+					return;
+				end if;
+		end;
+
+		-- Buscar o último check-in do aluno e faz check-in ou check-out
+			select max(id_checkin) into pd_checkin_ultimo
+			from CHECK_INS a
+			where a.id_aluno = pd_id_aluno
+				  and a.dt_saida is null;
+
+		-- Se não houver check-ins, realiza um novo
+			if pd_checkin_ultimo is null then
+				insert into CHECK_INS (id_aluno, id_acad, dt_entrada)
+				values (pd_id_aluno, pd_id_acad, pd_checkin_dtentrada);
+
+				commit;
+				dbms_output.put_line ('Check-in registrado.');
+
+		-- Se houver check-in, realiza um check-out
+			else
+				update CHECK_INS
+				set dt_saida = sysdate
+				where id_checkin = pd_checkin_ultimo;
+
+				commit;
+				dbms_output.put_line ('Check-out registrado.');
+
+			-- Chama a função de calcular a duração da permanência
+				select FN_CHECKIN_DURACAO (a.dt_entrada, a.dt_saida) into pd_checkin_duracao
+				from CHECK_INS a
+				where a.id_checkin = pd_checkin_ultimo;
+
+			-- Faz o update do campo 'duração_min' em 'CHECK_INS'
+				update CHECK_INS
+				set duracao_min = pd_checkin_duracao
+				where id_checkin = pd_checkin_ultimo;
+
+				commit;
+				dbms_output.put_line ('Permanência de '|| pd_checkin_duracao ||' minutos.');
+
+			-- Se 'duracao_min' >= 20, então adiciona pontos ao aluno (usando a procedure 'pd_add_pontos')
+				if pd_checkin_duracao >= 20 then
+					pd_add_pontos(pd_id_aluno, pd_pontos);
+					dbms_output.put_line('Pontuação por check-in adicionada.');
+
+					-- Atualiza o progresso do desafio de checkins do aluno
+
+					-- 101 = checkins no mesmo mes
+					pd_desafios_alunos(pd_id_aluno, 101);
+
+					-- 102 = checkins em qualquer mes
+					pd_desafios_alunos(pd_id_aluno, 102);
+
+				else
+					dbms_output.put_line('Tempo de permanência mínimo não atingido.');
+
+				end if;
+
+			end if;
+
+	end pd_treino_checkin;

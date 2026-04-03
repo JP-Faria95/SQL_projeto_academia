@@ -19,12 +19,12 @@ podem ter somente um objetivo cadastrado em seu perfil, mas o mesmo objetivo pod
 podem cadastrar várias metas e nesse caso, cada meta pertence a somente um aluno, já que é um registro pessoal e portanto, um relacionamento 1xN. Por fim, a tabela
 METAS_ALUNOS_COMPLETAS registra cada aluno somente uma vez e desta forma, é feito um relacionamento 1x1 com a tabela alunos.
 
-*4_MATRICULAS_PAGAMENTOS* - Envolve os relacionamentos das tabelas: MATRICULAS - PLANOS - ALUNOS - MODALIDADES E PAGAMENTOS. Uma matricula pode conter somente
+*4_MATRICULAS_PAGAMENTOS* - Envolve os relacionamentos das tabelas: MATRICULAS - PLANOS - ALUNOS - MODALIDADES E PAGAMENTOS: Uma matricula pode conter somente
 um aluno, um plano específico e uma modalidade, no entanto, estes podem aparecer em diferentes matrículas, assim formam relacionamentos 1xN entre matriculas e
 planos, matriculas e alunos e entre matriculas e modalidades. Da mesma forma ocorre com o relacionamento 1xN entre matriculas e pagamentos, uma vez que um registro
 de pagamento é feito somente para uma única matrícula, mas cada matrícula terá diferentes registros na tabela de pagamentos, dada a recorrência deste processo.
 
-*5_DESAFIOS_ALUNOS_MODALIDADES* - Envolve os relaciomentos das tabelas: DESAFIOS - DESAFIOS_TIPOS - ALUNOS E MODALIDADES. Nesse cenário, cada desafio pertence
+*5_DESAFIOS_ALUNOS_MODALIDADES* - Envolve os relaciomentos das tabelas: DESAFIOS - DESAFIOS_TIPOS - ALUNOS E MODALIDADES: Nesse cenário, cada desafio pertence
 a somente um tipo, mas cada tipo pode possuir diferentes desafios, portanto um relacionamento 1xN é definido. Quando relacionamos alunos com a tabela de desafios,
 surge uma entidade relacional NxN uma vez que um desafio pode ser registrado para muitos alunos, e cada aluno pode realizar diferentes desafios ao longo do tempo.
 No entanto, surge uma particularidade aqui nesse cenário, pois os desafios que contabilizam treinos para a mesma modalidade guardam não apenas o id do desafio,

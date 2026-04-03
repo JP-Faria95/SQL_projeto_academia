@@ -1,0 +1,27 @@
+/*
+A view vw_sorteios_historico tem como objeto trazer informações a respeito dos sorteios que já foram realizados pelas unidades.
+
+Exemplos de uso dessa view:
+-> Quais sorteios o aluno com Id igual a 1 foi o aluno sorteado:
+select * from vw_sorteios_historico where id_aluno = 1;
+
+-> Ainda para o mesmo aluno, quais desses sorteios foram finalizados pelo aluno, isto é, aqueles em que o aluno aceitou retirar a recompensa usando seus pontos:
+select * from vw_sorteios_historico where id_aluno = 1 and finalizado = '1';
+
+-> Ver as recompensas menos sorteadas, isto é, aquela que foram sorteadas somente uma vez até agora:
+select recompensa, count(*) as vezes_sorteada from vw_sorteios_historico group by recompensa having count(*) = 1 order by recompensa;
+*/
+
+create or replace view vw_sorteios_historico as
+	select
+		a.id_sorteio,
+		a.dt_realizado,
+		a.id_recompensa,
+		b.recompensa,
+		b.custa_pontos,
+		a.id_aluno,
+		c.nome,
+		a.finalizado
+	from SORTEIOS a
+	join RECOMPENSAS b on a.id_recompensa = b.id_recompensa
+	join ALUNOS c on a.id_aluno = c.id_aluno;

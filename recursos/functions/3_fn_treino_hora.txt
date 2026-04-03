@@ -1,0 +1,25 @@
+/*
+A função fn_treino_hora tem como objetivo extrair a HORA de um dado do tipo date e transforma-lo em tipo numérico.
+
+Para isso, a função utiliza duas funções nativas do oracle:
+
+-> Função 'To_number': Essa função transforma valores textuais em numéricos:
+Por exemplo: 'to_number('18') deve retornar 18 numérico.
+
+-> Função 'To_char': Essa função transforma valores que não são do tipo texto, para o tipo varchar:
+Por exemplo: to_char('17/01/2026 14:00:00, 'HH24') deve resultar em '14' textual.
+
+Neste caso, retiramos apenas o horário da string date que é passado no parâmetro da função.
+*/
+
+create or replace function fn_treino_hora(fn_data date)
+return number as fn_hora number;
+
+begin
+	if fn_data is null then
+		raise_application_error(-20002,'A data do treino não pode ser nula');
+	end if;
+	
+	fn_hora := to_number(to_char(fn_data,'HH24'));
+	return fn_hora;
+end fn_treino_hora;

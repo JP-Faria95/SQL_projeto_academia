@@ -1,0 +1,18 @@
+/*
+A função fn_alunos_calcula_dtproxpagamento tem como objetivo calcular a data do próximo pagamento de um determinado aluno, levando em consideração o tipo de plano
+o qual o aluno utiliza em sua matrícula.
+
+A função recebe a data em que foi feito o último pagamento e mais a duração do plano do aluno, em dias.
+
+Portanto, a função realiza uma soma simples da data do pagamento com os dias recorrentes do plano do aluno, por exemplo:
+-> Último pagamento realizado hoje 18/01/2026 14:00:00 e o aluno utiliza um plano bimestral, portanto 60 dias. O retorno da função será a data: 19/03/2026 14:00:00.
+*/
+
+create or replace function fn_alunos_calcula_dtproxpagamento(
+	fn_dt_pagamento date,
+	fn_plano_duracao number)
+return date as dt_prox_pagamento date;
+
+begin
+	dt_prox_pagamento := fn_dt_pagamento + fn_plano_duracao;
+end fn_alunos_calcula_dtproxpagamento;

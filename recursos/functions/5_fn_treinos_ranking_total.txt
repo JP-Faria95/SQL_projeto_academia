@@ -1,0 +1,76 @@
+/*
+A função fn_treinos_ranking_total tem como objetivo criar uma lista em forma de tabela de alunos organizados pelo número de treinos.
+
+A função recebe como parâmetros, que podem ou não ser nulos, de acordo com o ranking o qual o aluno deseja criar:
+-> O id da academia,
+-> O id da modalidade,
+-> O sexo dos alunos rankeados,
+-> Um flag de idade na qual, se = 0, busca alunos de todas as idades, mas se = 1 então seleciona alunos apenas com 60 anos ou mais,
+-> O número de posições que o ranking deve possuir, com valor padrão de 10 posições caso o valor seja nulo.
+
+Essa função tem uma complexidade um pouco maior pela necessidade de formatar o resultado para uma tabela. Nesse caso é preciso:
+1) Utilização do dado tipo 'record' do Oracle para armazenar diferentes outros tipos, semelhante ao struct em outras linguagens de programação.
+2) Utilização de um laço de repetição for, que utiliza a query principal para trazer os alunos seguindo as condições passadas pelos parâmetros.
+3) Na query principal, a função nativa 'row number()' nativa é usada para organizar as linhas encontradas de acordo com o número de treinos.
+4) O loop é encerrado apenas quando o número de linhas adicionados em 'aluno' referencidas por 'posicao' é igual ao parâmetro 'fn_ranking'.
+5) Utilização de retorno pipelined, que permite retornar várias linhas e não apenas um valor como em retornos comuns.
+6) Previamente criar um 'type' de um objeto, definindo como a linha é formada fora da função, neste caso usamos o type 'tp_ranking_row'.
+7) Previamente criar um 'type' de uma tabela, e associando as linhas dessa tabela com o objeto criado 'tp_ranking_row'.
+8) O type da tabela é associado ao retorno da função e o resultado é uma tabela formada pelas linhas dos alunos em forma de ranking.
+*/
+
+create or replace function fn_treinos_ranking_total(
+	fn_id_acad number default null,
+	fn_id_mod number default null,
+	fn_sexo varchar2 default null,
+	fn_idade number default 0,
+	fn_ranking number default 10)
+return tp_ranking_tabela pipelined as
+
+begin
+	-- 'aluno' é o record da função
+	for aluno in (
+		select a.nome,
+			   a.sexo,
+			   a.idade,
+			   a.unidade,
+			   a.modalidade,
+			   count(*) as treinos_qtd,
+			   row number() over (order by count(*) desc) as posicao
+		from vw_treinos_aluno a
+		where (a.id_acad = fn_id_acad or fn_id_acad is null)
+			and (a.id_modalidade = fn_id_mod or fn_id_mod is null)
+			and (a.sexo = fn_sexo or fn_sexo is null)
+			and ((fn_idade = 1 and a.idade >=60) or fn_idade = 0)
+			and a.data is not null
+		group by a.nome,a.sexo,a.idade,a.unidade,a.modalidade
+		order by treinos_qtd desc )
+	
+	loop
+		exit when aluno.posicao >= fn_ranking;
+	
+	pipe row(
+		tp_ranking_row(
+			aluno.nome,
+			aluno.sexo,
+			aluno.idade,
+			aluno.unidade,
+			aluno.modalidade,
+			aluno.treino_qtd,
+			aluno.posicao
+			)
+		);
+	end loop;
+end fn_treinos_ranking_total;
+
+create or replace type tp_ranking_row as object
+(	nome         varchar2(200),
+	sexo         varchar2(1),
+	idade        number,
+	unidade      varchar2(200),
+	modalidade   varchar2(200),
+	treinos_qtd  number,
+	posicao      number
+);
+
+create or replace type tp_ranking_tabela as table of tp_ranking_row;

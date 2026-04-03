@@ -1,0 +1,14 @@
+/*
+A procedure 'pd_profs_aniversario_atualiza_idade' tem como função atualizar a idade dos professores aniversariantes do mês atual.
+
+É uma procedure bem simples que apenas faz um update na tabela 'professores'.
+*/
+
+create or replace procedure pd_profs_aniversario_atualiza_idade is
+	begin
+
+		update PROFESSORES
+		set idade = idade +1
+		where extract(month from dt_nasc) = extract(month from sysdate);
+
+	end pd_profs_aniversario_atualiza_idade;

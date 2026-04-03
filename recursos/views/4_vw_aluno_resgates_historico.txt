@@ -1,0 +1,32 @@
+/*
+A view vw_aluno_resgates_historico tem como objetivo trazer informações a respeito dos resgates de recompensas realizados pelos alunos.
+
+É uma view que une as tabelas 'alunos', 'recompensas', 'resgates' e 'pontos'.
+
+Exemplos de uso da view:
+-> Trazer todos os resgates realizados pelo aluno com Id igual a 10:
+eslect * from vw_aluno_resgates_historico where id_aluno = 10;
+
+-> Trazer todos os resgates realizados para as recompensas com Id igual a 2,4, e 6:
+select * from vw_aluno_resgates_historico where id_recompensa = 2 or id_recompensa = 4 or id_recompensa = 6 order by id_recompensa;
+
+-> Trazer a quantidade de vezes que cada recompensa foi resgatada, independente do aluno:
+select id_recompensa, recompensa, count(*) from vw_aluno_resgates_historico group by id_recompensa, recompensa order by count(*) desc;
+*/
+
+create or replace view vw_aluno_resgates_historico as
+	select
+		a.id_resgate,
+		a.dt_resgate,
+		b.id_aluno,
+		b.nome,
+		c.id_recompensa,
+		c.recompensa,
+		c.custa_pontos,
+		(d.pontos_total + c.custa_pontos) as pontos_antes,
+		d.pontos_total as pontos_depois
+	from RESGATES    a
+	join ALUNOS      b on a.id_aluno      = b.id_aluno
+	join RECOMPENSAS c on a.id_recompensa = c.id_recompensa
+	join PONTOS      d on b.id_aluno      = d.id_aluno
+	order by a.dt_resgate desc;

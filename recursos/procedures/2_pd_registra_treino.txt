@@ -1,0 +1,250 @@
+/*
+A procedure pd_registra_treino tem como objetivo fazer o registro completo do treino realizado por determinado aluno. Através dela que o aluno consegue manter
+atualizado seu registro de treinos bem como sua pontuação referente a realização deles.
+
+Ela recebe como parâmetros: O Id do aluno que está registrando um treino, o da academia em que o treino será realizado e o da modalidade que será treinada.
+
+Ao longo de sua execução, as seguintes variáveis são definidas e utilizadas:
+-> pd_id_treino: Guarda o valor do Id do treino já iniciado pelo aluno. Serve para atualizar o final do treino, na segunda chamada da procedure.
+-> pd_treino_inicio: Guarda a data do inicio de um treino que é usada para calcular a duração em minutos do treino ao ser finalizado.
+-> pd_modalidade_nome: Guarda o nome da modalidade encontrada após uma busca na tabela 'modalidades' usando o id da modalidade fornecido.
+-> pd_mod_resultado: Guarda 1 ou 0 para verificar se a modalidade informada pelo aluno é oferecida naquela unidade na chamada da procedure.
+-> pd_hora_resultado: Guarda 1 ou 0 para verificar se a hora em que está sendo registrado um treino confere com os horários registrados para aquela modalidade.
+-> pd_treino_dia: Guarda a hora que está sendo registrado um treino para comparação com o horário cadastrado para aquela modalidade.
+-> pd_treino_hora: Guarda o dia que está sendo registrado um treino para comparação com os dias cadastrados para aquela modalidade.
+-> pd_matricula_status: Guarda 1 ou 0 para verificar se o aluno possui matrícula ativa para a modalidade que está sendo informada.
+-> pd_pontos: Guarda o valor da pontuação que será atribuida para o aluno ao final do registro e que pode ser alterado ao longo da execução da procedure.
+-> pd_modalidade_bonus: Guarda 'S' ou 'N' para verificar se a modalidade informada é bônus naquele mês e assim oferece mais pontos ao treinar ela.
+-> pd_desafio_id_mod_mesma: Guarda o Id do desafio referente a treinos da mesma modalidade. Por exemplo: 'Registrar 10 treinos para modalidade natação'.
+-> pd_desafio_id_mod_qualquer: Guarda o Id do desafio referente a treinos para qualquer modalidade. Por exemplo: 'Registrar 10 treinos para qualquer modalidade'.
+-> pd_desafio_id_mod_bonus: Guarda o Id do desafio referente a treinos na modalidade bonus. Por exemplo: 'Registar 10 treinos para uma modalidade bonus'.
+-> pd_existencia: Guarda 1 ou 0 para verificar se o aluno é aniversariante, ou o professor ou a academia. Desta forma, podendo acrescentar a pontuação atribuida.
+-> pd_existe_treino: Guarda 1 ou 0 para verificar se já existe um treino aberto para o aluno.
+-> pd_modalidade_testa: Guarda o Id da modalidade que o aluno iniciou um treino para verificar na próxima chamada se a mesma modalidade foi informada.
+
+A procedure faz as seguintes verificações durante sua execução:
+1) Busca o nome da modalidade que foi inserida pelo aluno, para exibição.
+2) Precisa verificar se o aluno já tem um treino iniciado, pois a chamada da procedure pode representar tanto o ínicio de um treino, como a finalização de um.
+3) Caso tenha um treino iniciado:
+3.1) Precisa verificar se a modalidade informada no parâmetro é a mesma registrada para o inicio do treino.
+3.2) Faz o update da tabela 'treinos', registrando a finalização do treino bem como a duracao.
+3.3) Para atribuir os pontos por finalizar um treino: 
+3.3.1) Verifica se o aluno, o professor que oferece a modalidade e academia da modalidade informada são aniversariantes, pois isso aumenta a pontuação recebida.
+3.3.2) Atualiza os desafios referentes a registros de treinos e faz a pontuação do aluno.
+4) Caso não tenha um treino iniciado:
+4.1) Verifica se a modalidade informada no parâmetro é oferecida na unidade informada.
+4.2) Verifica se as horas e o dia da chamada da procedure conferem com os horarios registrados para a modalidade informada.
+4.3) Verifica se o aluno tem matrícula ativa para a modalidade informada.
+4.4) Por fim, se a chamada da procedure estiver correta, registra o inicio de um treino.  
+*/
+
+create or replace procedure pd_registra_treino (pd_id_aluno number, pd_id_modalidade number, pd_id_acad number)
+	as
+		pd_id_treino                TREINOS.id_treino % type;
+		pd_treino_inicio            TREINOS.dt_inicio % type;
+		pd_modalidade_nome          MODALIDADES.modalidade % type;
+		pd_mod_resultado            number;
+		pd_hora_resultado           number;
+		pd_treino_dia               varchar(3);
+		pd_treino_hora              number;
+		pd_matricula_status         number;
+		pd_pontos                   number := 4;
+		pd_modalidade_bonus         char(1);
+		pd_desafio_id_mod_mesma     number := 5;
+		pd_desafio_id_mod_qualquer  number := 6;
+		pd_desafio_id_mod_bonus     number := 7;
+		pd_existencia               number;
+		pd_existe_treino            number := 0;
+		pd_modalidade_testa         number;
+	begin
+
+		-- Buscar o nome da modalidade
+			select a.modalidade, a.bonus into pd_modalidade_nome, pd_modalidade_bonus
+			from MODALIDADES a
+			where a.id_modalidade = pd_id_modalidade;
+
+		-- Verifica se o aluno já tem um treino iniciado
+			select count(*) into pd_existe_treino
+			from TREINOS a
+			where a.id_aluno = pd_id_aluno
+				and a.dt_inicio is not null
+				and a.dt_final is null;
+				
+		-- Verifica se o aluno não errou a modalidade
+		begin
+			select a.id_modalidade into pd_modalidade_testa
+			from TREINOS a
+			where a.id_aluno = pd_id_aluno
+				and a.dt_inicio is not null
+				and a.dt_final is null;
+		exception
+			when no_data_found then pd_modalidade_testa := 0;
+		end;
+		
+		if pd_modalidade_testa != pd_id_modalidade and pd_existe_treino = 1 then
+			dbms_output.put_line ('O aluno tem um treino não finalizado para outra modalidade.');
+			raise_application_error(-20001,'O aluno tem um treino não finalizado para outra modalidade.');
+			return;
+		end if;
+
+		-- Só entra aqui se tiver treino aberto
+		if pd_existe_treino > 0 then
+			select a.id_treino, a.dt_inicio into pd_id_treino, pd_treino_inicio
+			from treinos a
+			where a.id_aluno = pd_id_aluno
+				and a.dt_inicio is not null
+				and a.dt_final is null;
+
+
+			update TREINOS a
+			set a.dt_final = sysdate,
+				a.duracao_min = fn_checkin_duracao(pd_treino_inicio, sysdate)
+			where a.id_treino = pd_id_treino;
+
+			-- Antes de adicionar pontos:
+
+			-- Verifica se o aluno é aniversariante no mes e/ou dia
+			select count(*) into pd_existencia
+				from ALUNOS
+				where id_aluno = pd_id_aluno
+					  and extract(day from dt_nasc) = extract(day from sysdate)
+					  and extract(month from dt_nasc) = extract(month from sysdate);
+
+			if pd_existencia > 0 then pd_pontos := 8;
+
+			else
+				select count(*) into pd_existencia
+				from ALUNOS
+				where id_aluno = pd_id_aluno
+					  and extract(month from dt_nasc) = extract(month from sysdate);
+
+				if pd_existencia > 0 then pd_pontos := 6;
+
+				else pd_pontos := 4;
+
+				end if;
+			end if;
+
+			-- Verifica se o professor da modalidade é aniversariante
+			select count(*) into pd_existencia
+			from (select a.id_prof, a.dt_nasc
+				  from PROFESSORES a
+				  join ACAD_HORA_PROF_MOD b on b.id_prof = a.id_prof
+				  where b.id_modalidade = pd_id_modalidade
+					and a.ativo = 'S'
+				  union
+				  select a.id_prof, a.dt_nasc
+				  from PROFESSORES a
+				  join ACAD_HORA_PROF_MUSC b on b.id_prof = a.id_prof
+				  where b.id_modalidade = pd_id_modalidade
+					and a.ativo = 'S'
+				  ) sub
+			where extract(month from sub.dt_nasc) = extract(month from sysdate);
+
+			if pd_existencia > 0 then pd_pontos := pd_pontos + 1;
+			end if;
+
+			-- Verifica se a unidade do treino é aniversariante
+			select count(*) into pd_existencia
+			from ACADEMIAS
+			where id_acad = pd_id_acad
+				  and extract(month from dt_inaugurada) = extract(month from sysdate);
+
+				if pd_existencia > 0 then pd_pontos := pd_pontos + 1;
+				end if;
+
+			-- Atualiza o progresso dos desafios de treinos
+
+				-- Modalidade Bônus (usa procedure)
+				if pd_modalidade_bonus = 'S' then
+					pd_pontos := pd_pontos + 2;
+
+					pd_desafios_alunos(pd_id_aluno,pd_desafio_id_mod_bonus,pd_id_modalidade);
+				end if;
+
+				-- Para a mesma modalidade (usa procedure com id da modalidade)
+				pd_desafios_alunos(pd_id_aluno, pd_desafio_id_mod_mesma, pd_id_modalidade);
+
+				-- Para qualquer modalidade (usa procedure)
+				pd_desafios_alunos(pd_id_aluno, pd_desafio_id_mod_qualquer);
+
+			-- Adiciona os pontos
+			pd_add_pontos (pd_id_aluno, pd_pontos);
+			dbms_output.put_line ('Treino finalizado com sucesso.' ||pd_pontos|| ' pontos registrados.');
+
+		else
+			-- Verifica se a modalidade informada é oferecida na academia escolhida
+
+				-- Se modalidade = 6 verifica em 'acad_hora_prof_musc'
+				if pd_id_modalidade = 6 then
+					select count(*) into pd_mod_resultado
+					from ACAD_HORA_PROF_MUSC
+					where id_acad = pd_id_acad;
+
+				-- Se modalidade != 6 verifica em 'acad_hora_prof_mod'
+				else
+					select count(*) into pd_mod_resultado
+					from ACAD_HORA_PROF_MOD
+					where id_acad = pd_id_acad
+					and id_modalidade = pd_id_modalidade;
+
+				end if;
+
+				if pd_mod_resultado = 0 then
+					dbms_output.put_line ('Erro: Modalidade não é oferecida na unidade escolhida.');
+					return;
+				end if;
+
+			-- Verifica se o dia e horário escolhido batem com o horário da modalidade
+
+				-- Utiliza as funções 'fn_treino_dia' e 'fn_treino_hora' para extrair o DIA e HORA do treino registrado
+				pd_treino_dia  := fn_treino_dia(SYSDATE);
+				pd_treino_hora := fn_treino_hora(SYSDATE);
+
+				-- Se for musculação, segue por aqui:
+				if pd_id_modalidade = 6 then
+					select count(*) into pd_hora_resultado
+					from ACAD_HORA_PROF_MUSC a
+					join HORARIOS b on a.id_horario = b.id_horario
+					where a.id_acad = pd_id_acad
+						and a.id_modalidade = 6
+						and b.dia_semana = pd_treino_dia
+						and pd_treino_hora between b.hora_inicio and b.hora_final;
+
+				-- Se não musculação, segue por aqui:
+				else
+					select count(*) into pd_hora_resultado
+					from ACAD_HORA_PROF_MOD a
+					join HORARIOS b on a.id_horario = b.id_horario
+					where a.id_acad = pd_id_acad
+						and a.id_modalidade = pd_id_modalidade
+						and b.dia_semana = pd_treino_dia
+						and pd_treino_hora between b.hora_inicio and b.hora_final;
+				end if;
+
+				if pd_hora_resultado = 0 then
+					dbms_output.put_line ('Dia e hora escolhidos não batem com horário da modalidade.');
+					return;
+				end if;
+
+			-- Verifica se o aluno tem matricula ativa para a modalidade escolhida
+				select count(*) into pd_matricula_status
+				from MATRICULAS a
+				where a.id_aluno = pd_id_aluno
+					  and a.id_modalidade = pd_id_modalidade
+					  and a.status = 'S';
+
+				if pd_matricula_status = 0 then
+					dbms_output.put_line ('Aluno não possui matrícula ativa para esta modalidade');
+					return;
+				end if;
+
+			-- Se todas validações Ok, então inicia um treino com sucesso
+				insert into TREINOS (dt_inicio, dt_final, duracao_min, id_aluno, id_modalidade, id_acad)
+				values (sysdate, NULL, NULL, pd_id_aluno, pd_id_modalidade, pd_id_acad);
+
+				commit;
+				dbms_output.put_line ('Treino de "'||pd_modalidade_nome||'" iniciado com sucesso.');
+
+		end if;
+	end pd_registra_treino;

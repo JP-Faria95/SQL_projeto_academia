@@ -1,0 +1,36 @@
+/*
+O job job_desafios_resetar foi programado para ser executado mensalmente no primeiro dia do mês e sua execução atualiza o progresso dos desafios 'mensais' dos alunos
+para 0. 
+
+Basicamente esse job faz o reset dos desafios que precisam ser resetados mensalmente para que haja uma nova contagem de progressão para os alunos.
+*/
+
+begin
+	dbms_scheduler.create_job
+	(
+		job_name        => 'job_desafios_resetar',
+		job_type        => 'plsql_block',
+		job_action      =>
+		q'[
+			begin
+				update DESAFIOS_ALUNOS a
+				set progresso = 0,
+					concluido = 'N',
+					dt_atualizado = sysdate
+				where a.id_desafio in
+					(select b.id_desafio
+					from DESAFIOS b
+					join DESAFIOS_TIPOS c on b.id_tipo = c.id_tipo_desafio
+					where c.reinicia = 'S'
+					);
+
+				commit;
+				dbms_output.put_line('Desafios mensais reiniciados.');
+			end;
+		]',
+		start_date      => trunc(add_months(sysdate,1),'MM'),
+		repeat_interval => 'freq=monthly; bymonthday=1; byhour=0; byminute=0; bysecond=0',
+		enabled         => true,
+		comments        => 'Reseta mensalmente o progresso dos desafios mensais'
+	);
+end;

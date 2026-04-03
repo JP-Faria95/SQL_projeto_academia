@@ -1,0 +1,67 @@
+/*
+A procedure pd_meta_completa tem como objetivo finalizar uma meta que o aluno tenha completado.
+
+Ela recebe como parâmetro: O Id do aluno e da meta.
+
+Ao longo de sua execução, as seguintes variáveis são definidas:
+-> pd_meta: Guarda 1 ou 0 para validar se a meta informada é do aluno que está chamando a procedure.
+-> pd_pontos: Guarda o valor 10 referente à quantidade de pontos que o aluno ganha ao completar uma meta.
+
+A procedure faz as seguintes validações:
+1) Verifica se a meta informada é do aluno que está chamando a procedure para evitar que metas não correspondentes sejam finalizadas.
+2) Verifica se a meta informada já foi concluida anteriormente, para evitar completar a mesma meta mais de uma vez.
+3) Se a meta pertence ao aluno e não foi completada, então finaliza ela através de um update na tabela 'metas'.
+4) Por fim, utiliza a procedure 'pd_add_pontos' para adicionar os pontos correspondentes ao aluno por finalizar uma meta.
+*/
+
+create or replace procedure pd_meta_completa
+	(
+		pd_id_aluno in number,
+		pd_id_meta in number
+	) as
+		pd_meta number;
+		pd_pontos number := 10;
+
+	begin
+
+		-- Verifica se a meta informada é desse aluno
+			select count(*) into pd_meta
+			from METAS a
+			where a.id_aluno = pd_id_aluno
+				  and a.id_meta = pd_id_meta;
+
+			if pd_meta = 0 then
+				dbms_output.put_line('Aluno não possui essa meta.');
+				return;
+			end if;
+
+		-- Verifica se a meta ja foi concluída
+			select count(*) into pd_meta
+			from METAS a
+			where a.id_aluno = pd_id_aluno
+				  and a.id_meta = pd_id_meta
+				  and a.dt_alcancada is not null;
+
+			if pd_meta > 0 then
+				dbms_output.put_line('Aluno já concluiu essa meta.');
+				return;
+			end if;
+
+		-- Se pertence ao aluno, então finaliza a meta
+			update METAS
+			set DT_ALCANCADA =
+				case
+					when dt_alcancada is null then
+						sysdate
+					else
+						dt_alcancada end
+			where id_aluno = pd_id_aluno
+				  and id_meta = pd_id_meta;
+
+		-- Adiciona os pontos pro aluno pela meta
+			pd_add_pontos (pd_id_aluno, pd_pontos);
+
+			commit;
+			dbms_output.put_line('Meta concluída com sucesso.');
+
+	end pd_meta_completa;

@@ -1,0 +1,90 @@
+/*
+A procedure pd_checkin_contar tem como objetivo fazer o tratamento da contagem e atualização das metas de checkins consecutivos dos alunos.
+
+Nessa procedure, é utilizado uma estrutura de Cursor para armazenar todos os Ids dos alunos da tabela 'alunos'.
+
+Para cada aluno, a procedure busca se há alguma contagem de checkin na tabela 'checkins_contagem', se tiver, armazena a contagem atual e data do ultimo checkin
+nas variaveis 'pd_checkin_contagem' e 'pd_checkin_ultimo', porém se não houver registros de contagem para determinado aluno, é feito o insert dele na tabela 
+de contagens com o valor 0 para contagem.
+
+A procedure busca validar contagens consecutivas dos checkins, então verifica se a data do ultimo checkin do aluno foi no dia anterior ou não. Caso o último checkin
+tenha sido no dia anterior, então faz a atualização com +1 checkin, caso não tenha sido então zera a contagem de checkins consecutivos para o aluno.
+
+Por fim, a procedure ainda chama a função 'fn_checkin_verifica_meta' passando como argumento o número da contagem atual do aluno. A função retorna então o número
+de pontos que o aluno pode receber pela contagem atual, podendo ser zero. Sendo maior que 0, então a procedure 'pd_add_pontos' é chamada para que o aluno receba
+a pontuação referente a meta de checkins consecutivos alcançada.
+*/
+
+create or replace procedure pd_checkin_contar as
+	cursor pd_alunos is select id_aluno from ALUNOS;
+	pd_checkin_ultimo   date;
+	pd_checkin_contagem number;
+	pd_checkin_ontem    number;
+	pd_pontos           number;
+
+	begin
+
+		-- Loop que percorre todos os alunos da tabela ALUNOS procurando por checkins ontem
+			for pd_aluno in pd_alunos loop
+
+				begin
+					-- Busca pela contagem de checkins e a data do ultimo checkin
+					select a.checkins_total, a.dt_ultimo_checkin into pd_checkin_contagem, pd_checkin_ultimo
+					from CHECKINS_CONTAGEM a
+					where a.id_aluno = pd_aluno.id_aluno
+					for update;
+
+				exception when no_data_found then
+					insert into CHECKINS_CONTAGEM
+					(id_aluno,checkins_total)
+					values
+					(pd_aluno.id_aluno, 0);
+
+					select a.checkins_total, a.dt_ultimo_checkin into pd_checkin_contagem, pd_checkin_ultimo
+					from CHECKINS_CONTAGEM a
+					where a.id_aluno = pd_aluno.id_aluno
+					for update;
+
+				end;
+
+				-- Verifica se o último checkin foi ontem
+					select nvl(count(distinct trunc(a.dt_entrada)),0) into pd_checkin_ontem
+					from CHECK_INS a
+					where a.id_aluno = pd_aluno.id_aluno
+						  and trunc(a.dt_entrada) = trunc(sysdate ) - 1;
+
+				-- Busca a hora do ultimo checkin
+					select max(a.dt_saida) into pd_checkin_ultimo
+					from CHECK_INS a
+					where a.id_aluno = pd_aluno.id_aluno;
+
+				-- Atualiza a contagem de checkins ou reseta se não fez checkin
+					if pd_checkin_ontem = 1 then
+						pd_checkin_contagem := pd_checkin_contagem +1;
+
+						update CHECKINS_CONTAGEM
+						set checkins_total = pd_checkin_contagem,
+							dt_ultimo_checkin = pd_checkin_ultimo
+						where id_aluno = pd_aluno.id_aluno;
+
+					else
+						pd_checkin_contagem := 0;
+
+						update CHECKINS_CONTAGEM
+						set checkins_total = pd_checkin_contagem
+						where id_aluno = pd_aluno.id_aluno;
+
+					end if;
+
+				-- Utiliza a função 'fn_checkin_verifica_meta(pd_checkin_contagem)'
+					pd_pontos := fn_checkin_verifica_meta(pd_checkin_contagem);
+
+				-- Se o aluno atingiu alguma meta de checkins consecutivos, então adiciona os pontos equivalentes
+					if pd_pontos > 0 then
+						pd_add_pontos(pd_aluno.id_aluno, pd_pontos);
+					end if;
+
+			end loop;
+
+			commit;
+	end pd_checkin_contar;

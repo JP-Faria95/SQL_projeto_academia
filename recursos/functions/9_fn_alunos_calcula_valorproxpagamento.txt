@@ -1,0 +1,22 @@
+/*
+A função fn_aluno_calcula_valorproxpagamento tem como objetivo calcular o valor do próximo pagamento a ser realizado por um aluno.
+
+Ela recebe como parâmetros o valor do plano utilizado na matrícula do aluno e mais a idade do aluno.
+
+Importante: A idade do aluno é usada na função pois de acordo com as regras de negócio, há uma bonificação para os alunos aniversariantes de cada mês, sendo uma delas
+um desconto no pagamento proporcional à idade atual do aluno. Portanto, um aluno que pague regularmente 200 R$ pela sua matrícula, ao fazer aniversário de 30 anos
+e estando com sua matrícula ativa, receberá um desconto de 30 R$ para o próximo pagamento, nesse caso, 170 R$.
+
+Assim a função realiza uma diferença matemática entre o valor do plano e a idade do aluno, que caso não venha a ser aniversariante do mês, é tida com valor 0 na conta.
+
+O retorno é o valor total para o próximo pagamento do aluno.
+*/
+
+create or replace function fn_aluno_calcula_valorproxpagamento(
+	fn_valor_plano number,
+	fn_aluno_idade number defaull 0)
+return number as valor_prox_pagamento number;
+
+begin
+	valor_prox_pagamento := fn_valor_plano - fn_aluno_idade;
+end fn_aluno_calcula_valorproxpagamento;

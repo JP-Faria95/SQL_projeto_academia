@@ -1,0 +1,26 @@
+/*
+O job job_metas_completas_mes_reseta foi programado para ser executado mensalmente todo dia primeiro.
+
+Sua execução é uma query simples de update na tabela 'METAS_ALUNOS_COMPLETAS' que armazena além da quantidade total de metas completadas de um aluno, a quantidade
+completada para o mesmo mês, sendo este último valor, necessário ser reiniciado todo final do mês para uma nova contagem iniciar.
+*/
+
+begin
+	dbms_scheduler.create_job
+	(
+		job_name   => 'job_metas_completas_mes_reseta',
+		job_type   => 'plsql_block',
+		job_action => '
+			begin
+				-- Zera a quantidade de metas completas no mes de cada aluno
+				update METAS_ALUNOS_COMPLETAS
+				set metas_completa_mes = 0
+				where metas_completa_mes > 0;
+
+				commit;
+			end;',
+		start_date      => TRUNC(ADD_MONTHS(SYSDATE, 1), 'MM'),
+		repeat_interval => 'freq=monthly; bymonthday=1; byhour=0; byminute=0; bysecond=0',
+		enabled         => true
+	);
+end;

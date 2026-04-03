@@ -1,0 +1,15 @@
+/*
+A procedure 'pd_academias_aniversario_atualiza_idade' tem como função atualizar a idade das academias aniversariantes do mês atual.
+
+É uma procedure bem simples que apenas faz um update na tabela 'academias'.
+
+*/
+
+create or replace procedure pd_academias_aniversario_atualiza_idade is
+	begin
+
+		update ACADEMIAS
+		set idade = idade +1
+		where extract(month from dt_nasc) = extract(month from sysdate);
+
+	end pd_academias_aniversario_atualiza_idade;

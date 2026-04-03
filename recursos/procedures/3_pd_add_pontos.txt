@@ -1,0 +1,56 @@
+/*
+A procedure pd_add_pontos tem como objetivo fazer a atribuição de pontos aos alunos conforme as interações ocorrem com as unidades.
+
+Ela recebe como parâmetros: O Id do aluno que será contemplado com pontos e a quantidade de pontos a serem atribuidos.
+
+Ao longo de sua execução uma única variável é definida: 
+-> pd_aluno_nome: Que guarda o nome do aluno para exibição no final da execução da procedure.
+
+As seguintes verificações são realizadas:
+1) Verifica se a quantidade de pontos é válida, para evitar valores de pontos negativos.
+2) Verifica se o aluno já está na tabela 'pontos':
+2.1) Sendo a primeira vez que o aluno recebe pontos, faz o insert de uma nova linha na tabela 'pontos' referente ao aluno.
+2.2) Não sendo a primeira vez, então faz um update da linha referente ao aluno, adicionando a nova pontuação.
+*/
+
+create or replace procedure pd_add_pontos(pd_id_aluno number, pd_pontos number) as
+pd_aluno_nome ALUNOS.nome%type;
+
+	begin
+
+		-- Verificar antes se a quantidade de pontos passada é válida
+			if pd_pontos <= 0 then
+				dbms_output.put_line('Quantidade de pontos inválida.');
+				return;
+			end if;
+
+		-- Se quantidade válida, então verifica se aluno já tem pontos ou não
+			merge into PONTOS a
+			using (select pd_id_aluno as id_aluno from dual) b
+			on (a.id_aluno = b.id_aluno)
+
+		-- Se já tiver pontos, faz update
+		when matched then
+			update
+			set
+				a.pontos_total  = a.pontos_total + pd_pontos,
+				a.dt_atualizado = sysdate
+
+		-- Se nunca teve pontos, faz insert
+		when not matched then
+			insert
+			(id_aluno, pontos_total, dt_atualizado)
+			values
+			(pd_id_aluno, pd_pontos, sysdate);
+
+		commit;
+
+		-- Busca o nome do aluno
+			select a.nome into pd_aluno_nome
+			from ALUNOS a
+			where a.id_aluno = pd_id_aluno
+				  and rownum = 1;
+
+		dbms_output.put_line('+'||pd_pontos||' pontos adicionados ao aluno '||pd_aluno_nome);
+
+	end PD_ADD_PONTOS;

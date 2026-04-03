@@ -1,0 +1,42 @@
+/* 
+A função fn_checkin_duracao tem como objetivo calcular a duração em minutos de: 
+-> Um checkin/checkout
+-> Um treino completo
+
+Para isso, a função recebe como parâmetros do tipo 'date', o momento de inicio e fim das interações, por exemplo:
+-> '17/01/2026 10:00:00' e '17/01/2026 12:00:00'
+
+A função faz duas validações importantes para manter a integridade das regras de negócio:
+1) Se algum dos parâmetros vier com valores nulos, por exemplo: 'fn_checkin_duracao(sysdate,'')'
+2) Se a data de saída for menor que a data de entrada, por exemplo: 'fn_checkin_duracao('17/01/2026 10:15:00', '17/01/2026 9:30:00')'
+
+Se alguma validação for verdadeira, então a função dispara a procedure nativa 'raise_application_error()' com uma mensagem personalizada informando o erro encontrado.
+
+Após as validações, a função realiza a diferença matemática entre as datas de saída e entrada, com os seguintes detalhes:
+-> Após a diferença matemática, multiplica-se o resultado obtido por '1440' uma vez que o oracle retorna o resultado em dias e portanto, sabendo que em 1 dia
+tem 1440 minutos, fazemos esta multiplicação. Nas datas informadas como exemplo, o resultado inicial seria de '0,08333' dias e ao multiplicarmos por 1440: 120 minutos
+é o resultado da duração.
+-> A função nativa ROUND() é usada para gerar um resultado inteiro, excluíndo as partes decimais.
+
+Por fim, é retornado a variável 'fn_duracao' contendo o resultado final do tipo number.
+
+*/
+
+create or replace function fn_checkin_duracao(fn_dt_entrada date, fn_dt_saida date)
+return number as fn_duracao number;
+
+begin
+	
+	-- Primeira validação
+	if fn_dt_entrada is null or fn_dt_saida is null then
+		raise_application_error(-20001,'Datas de entrada ou saída não podem ser nulas');
+	end if;
+	
+	if fn_dt_saida < fn_dt_entrada then
+		raise_application_error(-20002,'Data de saída não pode ser menor que da entrada');
+	end if;
+	
+	fn_duracao := ROUND((fn_dt_saida - fn_dt_entrada) *1440);
+	return fn_duracao;
+
+end fn_checkin_duracao;

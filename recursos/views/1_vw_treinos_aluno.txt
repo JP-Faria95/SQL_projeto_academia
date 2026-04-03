@@ -1,0 +1,43 @@
+/*
+A view vw_treinos_aluno tem como objetivo agrupar dados do banco de dados referentes aos treinos que um aluno fez.
+
+Com essa view é possível unir as tabelas 'treinos', 'alunos', 'academias' e 'modalidades' e obter informações que possam contribuir no levantamento de dados ou
+estatísticas no futuro.
+
+Exemplos de chamadas da view:
+-> O aluno de Id igual a 1 deseja ver as informações dos treinos que ele realizou:
+	select *
+	from vw_treinos_aluno
+	where id_aluno = 1;
+
+-- O aluno de Id 15 deseja ver quantos treinos realizou para modalidade musculação (suponhamos de Id_modalidade = 6):
+	select count(*)
+	from vw_treinos_alunos
+	where id_aluno = 15
+      and id_modalidade = 6;
+
+-- O aluno de Id 10 deseja ver quantos treinos realizou na unidade Id 2, separados por modalidades:
+	select id_modalidade, modalidade, count(*) as total
+	from vw_treinos_alunos
+	where id_aluno = 10
+		and id_acad = 2
+	group by id_modalidade, modalidade;
+*/
+
+create or replace view vw_treinos_aluno as
+	select
+		a.id_treino,
+		a.id_aluno,
+		b.nome,
+		b.sexo,
+		b.idade,
+		a.id_acad,
+		c.bairro as unidade,
+		a.id_modalidade,
+		d.modalidade,
+		a.dt_final as data,
+		a.duracao_min as duracao
+	from TREINOS     a
+	join ALUNOS      b on a.id_aluno      = b.id_aluno
+	join ACADEMIAS   c on a.id_acad       = c.id_acad
+	join MODALIDADES d on a.id_modalidade = d.id_modalidade;

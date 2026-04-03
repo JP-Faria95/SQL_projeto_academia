@@ -1,0 +1,45 @@
+/*
+O job job_sorteio_recompensa_escolhe é um job programado para ser executado mensalmente em todos os dias primeiro.
+
+A função do job é sortear uma ou mais recompensas (quantas forem desejadas pela gerência da unidade) da tabela de recompensas e usar as recompensas sorteadas
+para chamar a execução da procedure de realizar sorteios.
+
+Uma particularidade nesse job é a utilização do pacote nativo 'dbms_random' que é útil para gerar números pseudo-aleatórios e atribuir os números gerados às linhas
+da query que busca os ids das recompensas na tabela de recompensas. Ao final, ordenamos a busca justamente por esses números gerados, e selecionamos a primeira
+linha para ser a recompensa sorteada.
+*/
+
+begin
+	dbms_scheduler.create_job
+	(
+		job_name   => 'job_sorteio_recompensa_escolhe',
+		job_type   => 'plsql_block',
+		job_action => '
+			declare
+				recompensa1 number;
+				recompensa2 number;
+			begin
+				-- Sorteia as recompensas
+				select id_recompensa into recompensa1
+				from (select id_recompensa
+					  from vw_recompensas_lista
+					  order by dbms_random.value
+					 )
+				where rownum = 1;
+
+				select id_recompensa into recompensa2
+				from (select id_recompensa
+					  from vw_recompensas_lista
+					  order by dbms_random.value
+					 )
+				where rownum = 1;
+
+				-- Chama as procedures de realizar sorteio
+				pd_sorteios_realiza(recompensa1);
+				pd_sorteios_realiza(recompensa2);
+			end;',
+		start_date      => systimestamp,
+		repeat_interval => 'freq=monthly; bymonthday=1; byhour=0; byminute=0; bysecond=0',
+		enabled         => true
+	);
+end;

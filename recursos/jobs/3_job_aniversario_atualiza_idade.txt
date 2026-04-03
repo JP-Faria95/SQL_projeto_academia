@@ -1,0 +1,23 @@
+/*
+O job job_aniversario_atualiza_idade foi programado para ser executado mensalmente todo primeiro dia do mês. Sua função é bem simples, sendo apenas chamar
+a execução de três procedures do sistema, que atualizam a idade de aluno, professores e das unidades do sistema.
+
+Com esse job é possível automatizar a atualização da idade dos alunos cadastrados, bem como os professores e as unidades que compõe o sistema do banco de dados.
+*/
+
+begin
+	dbms_scheduler.create_job
+	(
+		job_name        => 'job_aniversario_atualiza_idade',
+		job_type        => 'plsql_block',
+		job_action      => 'begin
+								pd_alunos_atualiza_idade_valorproxpagamento_pontos;
+								pd_profs_aniversario_atualiza_idade;
+								pd_academias_aniversario_atualiza_idade;
+							end',
+		start_date      => trunc(add_months(sysdate,0),'month') + 1,
+		repeat_interval => 'freq=monthly; bymonthday=1; byhour=0; byminute=0; bysecond=0',
+		enabled         => true,
+		comments        => 'Chama as três procedures de aniversários.'
+	);
+end;

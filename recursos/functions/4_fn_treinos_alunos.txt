@@ -1,0 +1,77 @@
+/*
+A função fn_treinos_alunos tem como objetivo retornar o número de treinos realizados por um determinado aluno.
+
+É uma função pessoal que leva em consideração o id do aluno como um parâmetro obrigatório para realizar os cálculos e mais os seguintes parâmetros não obrigatórios:
+
+-> O id da academia que pode ou não ser usado, pois o resultado pode envolver todas as unidades em que o aluno já treinou.
+-> O id da modalidade que pode ou não ser usado, pois o resultado pode envolver todas as modalidades as quais o aluno já treinou.
+-> Um número de intervalo de dias que pode ou não ser usado, caso o aluno busque o número de treinos em um determinado intervalo ou não.
+-> Datas iniciais e finais que podem ou não serem usadas, caso o aluno queira o número de treinos em datas específicas.
+
+Algumas verificações importantes são necessárias para manter os resultados obtidos íntegros:
+1) Se o id do aluno for passado como nulo, então é impossível prosseguir.
+2) Se ao mesmo tempo, o intervalo em dias e o intervalo em datas não forem nulos, então não é possível prosseguir.
+3) Se um dos parâmetros por data for informado e outro for nulo, então novamente não é possível prosseguir.
+4) Se ambos parâmetros por data forem informados, mas a data final for menor que a data inicial, então não é possível prosseguir.
+
+Assim que a função é usada, de acordo com os parâmetros, é retornado então a quantidade de treinos que aquele aluno realizou.
+Possíveis resultados, a depender dos parâmetros podem ser obtidos:
+
+-> Aluno deseja ver quantos treinos realizou em determinada academia, mas em todas as modalidades e sem intervalo de tempo:
+select fn_treinos_aluno(1,1) from dual;
+
+-> Aluno quer ver quantos treinos realizou de uma determina modalidade em ano específico mas em qualquer academia:
+select fn_treinos_aluno(1,null,2,null,date '2025-01-01',date '2025-12-31') as Total_Treinos_2025 from dual;
+
+-> Aluno quer ver quantos treinos realizou em qualquer modalidade em qualquer academia, mas nos últimos 30 dias:
+select fn_treinos_aluno(1,null,null,30,null,null) as Total_Treinos_Ultimos_30_Dias from dual;
+*/
+
+create or replace function fn_treinos_aluno(
+	fn_id_aluno       number,
+	fn_id_acad        number default null,
+	fn_id_mod         number default null,
+	fn_dias_intervalo number default null,
+	fn_dt_inicial     date   default null,
+	fn_dt_final       date   default null)
+return number as fn_treinos_qtd number;
+
+begin
+	
+	if fn_id_aluno is null then
+		raise_application_error(-20003,'ID do aluno não pode ser nulo');
+	end if;
+	
+	if fn_dias_intervalo is not null and (fn_dt_inicial is not null or fn_dt_final is not null) then
+		raise_application_error(-20004,'Conflito: Não é possível obter resultados para um intervalo de dias e para datas fixas');
+	end if;
+	
+	if (fn_dt_inicial is not null and fn_dt_final is null) or (fn_dt_inicial is null and fn_dt_final is not null) then
+		raise_application_error(-20005,'Conflito: Não é possível obter resultados para datas incompletas');
+	end if;
+	
+	if fn_dt_inicial is not null and fn_dt_inicial > fn_dt_final then
+		raise_application_error(-20006,'Conflito: Data final não pode ser menor que a data inicial');
+	end if;
+	
+	-- Caso o aluno utilize um intervalo fixo
+	if fn_dias_intervalo is not null then
+		select count(*) into fn_treinos_qtd
+		from vw_treinos_aluno a
+		where a.id_aluno = fn_id_aluno
+			and (a.id_acad = fn_id_acad or fn_id_acad is null)
+			and (a.id_modalidade = fn_id_mod or fn_id_mod is null)
+			and a.data >= (trunc(sysdate - fn_dias_intervalo));
+	end if;
+	
+	-- Caso o aluno não utilize um intervalo fixo
+	if fn_dias_intervalo is null then
+		select count(*) into fn_treinos_qtd
+		from vw_treinos_aluno a
+		where a.id_aluno = fn_id_aluno
+			and (a.id_acad = fn_id_acad or fn_id_acad is null)
+			and (a.id_modalidade = fn_id_mod or fn_id_mod is null);
+	end if;
+	
+	-- Caso o aluno utilize datas específicas
+	if fn_dt_inicial is not null and 

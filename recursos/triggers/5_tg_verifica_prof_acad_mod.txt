@@ -1,0 +1,30 @@
+/*
+A trigger tg_verifica_prof_acad_mod tem como função verificar antes de um insert ou update, se o professor a ser inserido já consta na tabela vinculado a uma
+modalidade. Caso já esteja, então a trigger impede o insert ou update visto a regra de relacionamento 1x1 entre professores e modalidades.
+*/
+
+create or replace trigger tg_verifica_prof_acad_musc
+	before insert or update on ACAD_HORA_PROF_MUSC
+	for each row
+	declare
+		tg_id_acad number;
+	begin
+		-- Procura na tabela acad_hora_prof_musc se aquele professor já está na tabela
+		select distinct id_acad into tg_id_acad
+		from ACAD_HORA_PROF_MUSC
+		where id_prof = :new.id_prof
+		and rownum = 1;
+
+		-- Verifica se os ID_ACAD são diferentes, se for, bloqueia o insert pois quebra a regra 1x1
+		if tg_id_acad != :new.id_acad
+			then
+				raise_application_error(-20010,'Professor vinculado a outra academia!');
+		end if;
+
+	exception
+		-- Se o professor não existir, então permite o insert/update
+		when no_data_found
+			then
+				null;
+
+	end tg_verifica_prof_acad_musc;

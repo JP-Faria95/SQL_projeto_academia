@@ -1,0 +1,31 @@
+/*
+A função fn_treino_dia tem como objetivo extrair de um dado tipo 'date' apenas o DIA usando algumas funções nativas do Oracle:
+
+-> Função 'Upper': Essa função atribui maiúsculo a todas as letras de uma dada string:
+Por exemplo: upper('olá mundo') deve resultar em 'OLÁ MUNDO'.
+
+-> Função 'Trim': Exclui qualquer caractere que seja informado no parâmetro da função. Muito útil para excluir espaços extras em strings.
+Por exemplo: trim(' Olá Mundo  ') deve resultar em 'Olá Mundo'.
+
+-> Função 'To_char': Essa função transforma valores que não são do tipo texto, para o tipo varchar:
+Por exemplo: to_char(sysdate,'dy','NLS_DATE_LANGUAGE=PORTUGUESE') deve resultar em 'SAB'.
+Nota-se que na função fn_treino_dia, a função to_char recebe para os parâmetros opcionais 'formato' e 'lingua' os valores 'DY' e 'Portuguese', portanto o retorno
+da funçao traz o dia da data informada mas abreviado e na lingua portuguesa.
+
+Assim, ao passarmos uma data na chamada da função, como '17/01/2026 13:00:00', a função nativa 'to_char()' retorna 'Sab' e 'upper()' garante o resultado final em
+'SAB', condizendo com o nosso banco de dados.
+*/
+
+create or replace function fn_treino_dia(fn_data date)
+return varchar2 as fn_dia varchar2;
+
+begin
+	
+	if fn_data is null then
+		raise_application_error(-20002,'A data do treino não pode ser nula');
+	end if;
+	
+	fn_dia := upper(trim(to_char(fn_data,'DY','NLS_DATE_LANGUAGE=PORTUGUESE')));
+	return fn_dia;
+	
+end fn_treino_dia;

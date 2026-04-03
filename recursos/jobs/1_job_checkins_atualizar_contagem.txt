@@ -1,0 +1,18 @@
+/*
+O job job_checkins_atualizar_contagem é um job programado para ser executado diariamente à 00:00 com objetivo de executar a procedure 'pd_checkin_contar'. 
+
+Esse job faz parte do pacote de recursos que envolvem as tratativas a respeito dos checkins dos alunos. A procedure é responsável pela atualização da contagem de
+checkins, a função 'fn_checkin_verifica_meta' por sua vez verifica o progresso do aluno nos desafios de checkins consecutivos.
+*/
+
+begin
+	dbms_scheduler.create_job
+		(
+			job_name        => 'job_checkins_atualizar_contagem',
+			job_type        => 'plsql_block',
+			job_action      => 'begin pd_checkin_contar; end;',
+			start_date      => systimestamp,
+			repeat_interval => 'freq = daily; byhour = 0; byminute = 0; bysecond = 0',
+			enabled         => true
+		);
+end;

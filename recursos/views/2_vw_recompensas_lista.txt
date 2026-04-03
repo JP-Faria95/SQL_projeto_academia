@@ -1,0 +1,23 @@
+/*
+A view vw_recompesas_lista tem como objetivo trazer as informações a respeito das recompesas cadastradas no banco de dados.
+
+Exemplos de uso da view:
+-> Ver informações a respeito da recompensa com Id igual a 3:
+select * from vw_recompensas_lista where id_recompensa = 3;
+
+-> Ver quantas vezes a recompensa com Id igual a 6 foi sorteada:
+select vezes_sorteada from vw_recompensas_lista where id_recompensa = 6;
+
+-> Ver qual foi a recompensa mais sorteada:
+select vezes_sorteada from vw_recompensas_lista order by vezes_sorteada desc fetch first 1 row only;
+*/
+
+create or replace view vw_recompensas_lista as
+	select a.id_recompensa,
+		   a.recompensa,
+		   a.custa_pontos,
+		   (select count(*)
+		    from sorteios b
+			where b.id_recompensa = a.id_recompensa) as vezes_sorteada,
+		   nvl(a.observacoes, '-') as observacoes
+	from RECOMPENSAS a;

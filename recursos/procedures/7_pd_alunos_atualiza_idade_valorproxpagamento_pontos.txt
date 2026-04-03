@@ -1,0 +1,55 @@
+/*
+A procedure 'pd_alunos_atualiza_idade_valorproxpagamento_pontos' tem como função atualizar a idade dos alunos aniversariantes do mês, bem como o valor do próximo
+pagamento com desconto e também atribuir pontos referente a idade do aluno aniversariante.
+
+A procedure não recebe parâmetros e sua execução faz as seguintes verificações:
+1) Atualiza a idade de todos os alunos aniversariantes daquele mês em +1 usando uma busca na view 'vw_alunos_aniversario'.
+2) Realiza um Merge na tabela 'pagamentos' e busca na view 'vw_alunos_aniversario' os alunos aniversariantes, atualizando o valor do prox pagamento com desconto.
+3) Por fim, atribui ao aluno aniversariante, pontos referentes a sua idade atual.
+
+*/
+
+create or replace pd_alunos_atualiza_idade_valorproxpagamento_pontos is
+
+	begin
+
+		-- Atualiza a idade em + 1 de cada aluno aniversariante
+			update ALUNOS a
+			set a.idade = a.idade +1
+			where exists
+				(select 1
+				 from vw_alunos_aniversario vw
+				 where vw.id_aluno = a.id_aluno
+					   and vw.mes_aniversario = extract(month from sysdate)
+				);
+
+		-- Calcula e atualiza o valor do proximo pagamento com o desconto da idade do aluno
+			merge into PAGAMENTOS a
+			using
+				(select b.id_matricula,
+						max(b.id_pagamento) as id_pagamento,
+						fn_aluno_calcula_valorproxpagamento(vw.valor_plano, vw.idade +1) as valor_proximo_pag
+				 from PAGAMENTOS b
+				 join vw_alunos_aniversario vw on b.id_matricula = vw.id_matricula
+				 where vw.mes_aniversario = extract(month from sysdate)
+				 group by b.id_matricula, vw.valor_plano, vw.idade
+				) c
+			on (a.id_pagamento = c.id_pagamento)
+			when matched then
+				update set a.valor_proximo_pag = c.valor_proximo_pag;
+
+		-- Atribui os pontos referentes ao dobro da 'idade' dos alunos aniversariantes do mes
+			for aluno in
+				(select id_aluno,
+					   idade as idade
+				from vw_alunos_aniversario
+				where mes_aniversario = extract(month from sysdate))
+			loop
+
+				pd_add_pontos ((aluno.id_aluno*2), aluno.idade);
+
+			end loop;
+
+		commit;
+
+	end pd_alunos_atualiza_idade_valorproxpagamento;

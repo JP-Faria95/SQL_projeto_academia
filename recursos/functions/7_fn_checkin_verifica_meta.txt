@@ -1,0 +1,32 @@
+/*
+A função fn_checkin_verifica_meta tem como objetivo verificar se um determinado aluno tem pontos a serem atribuidos por completar desafios de checkins consecutivos.
+
+Ela recebe como parâmetro o total de checkins registrados do aluno e através da tabela 'CHECKINS_CONSECUTIVOS_PONTOS', avalia se é possível atribuir a pontuação
+correspondente.
+
+O retorno dela é a quantidade de pontos que o aluno pode receber pela contagem atual.
+*/
+
+create or replace function fn_checkin_verifica_meta(
+	fn_checkin_contagem number) 
+return number as pd_pontos number := 0;
+
+begin
+-- Se o aluno tiver 366 ou mais checkins consecutivos, ganha 20 pontos pelo checkin
+	if fn_checkin_contagem >= 366 then
+		pd_pontos := 20;
+
+-- Se tiver 365 ou menos, verifica se o aluno atingiu alguma das metas de checkin consecutivos antes
+	else
+		select max(pontos_add) into pd_pontos
+		from CHECKINS_CONSECUTIVOS_PONTOS a
+		where a.dias_consecutivos <= fn_checkin_contagem;
+		
+	end if;
+
+	if pd_pontos is null then
+		pd_pontos := 0;
+	end if;
+
+	return pd_pontos;
+end fn_checkin_verifica_meta;

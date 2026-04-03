@@ -1,0 +1,42 @@
+/*
+A função fn_treinos_ranking_aluno tem como objetivo mostrar a posição de um aluno específico em determinado ranking baseado nos parâmetros passados para a função.
+
+Ela recebe como parâmetros:
+-> O id do aluno o qual o ranking será baseado.
+-> O id da academia, da modalidade e o sexo nos quais os rankings podem ser projetados, não sendo obrigatórios.
+
+Neste caso, um aluno pode pesquisar sua posição em um ranking para determinada modalidade, ou unidade ou mesmo um ranking filtrado pelo sexo dos alunos.
+
+A função utiliza uma subquery que busca todos os alunos que satisfaçam as condições dos parâmetros para depois selecionar o aluno que utilizou a função.
+
+Novamente vemos a função nativa 'row_number()' que organiza as linhas pelos valores de count(*) dos treinos registrados para cada aluno.
+*/
+
+create or replace function fn_treinos_ranking_aluno(
+	fn_id_aluno number,
+	fn_id_acad  number default null,
+	fn_id_mod   number default null,
+	fn_sexo     char(1) default null)
+return number as fn_ranking_resultado number;
+
+begin
+	select posicao into fn_ranking_resultado
+	from (
+		select a.id_aluno,
+			   a.nome,
+			   a.sexo,
+			   a.idade,
+			   a.unidade,
+			   a.modalidade,
+			   row_number() over(order by count(*) desc) as posicao
+		from vw_treinos_aluno a
+		where (a.id_acad = fn_id_acad or fn_id_acad is null)
+			and (a.id_modalidade = fn_id_mod or fn_id_mod is null)
+			and (a.sexo = fn_sexo or fn_sexo is null)
+			and a.data is not null
+		group by a.id_aluno;
+		) b
+	where b.id_aluno = fn_id_aluno;
+
+	return fn_ranking_resultado;
+end fn_treinos_ranking_aluno;

@@ -1,0 +1,216 @@
+/*
+A procedure pd_desafios_alunos tem como função fazer toda a tratativa referente ao progresso dos alunos nos desafios oferecidos pelas academias.
+
+Ela recebe como parâmetros: O Id do aluno, o Id do tipo do desafio e o Id da modalidade.
+
+Durante sua execução, as seguintes variáveis são definidas:
+-> pd_desafio_id: Guarda o Id do último desafio não completo do aluno, para aquele tipo de desafios.
+-> pd_qtd_requer: Guarda a quantidade de registros necessários para completar o desafio em aberto.
+-> pd_pontos: Guarda a quantidade de pontos ganhos pelo aluno ao completar o desafio.
+-> pd_progresso_atual: Guarda a quantidade atual de registros o desafio informado e que será comparado com o valor da variável 'pd_qtd_requer'.
+-> pd_concluido: Guarda 'S' ou 'N' para definir o ultimo desafio completo pelo aluno.
+-> pd_desafio_desc: Guarda a descrição daquele desafio. Por exemplo: 'Registrar 10 treinos de musculação'.
+
+A procedure faz as seguintes verificações:
+1) A procedure faz a verificação em relação ao tipo de desafio. Se o tipo informado for do tipo 'treinos da mesma modalidade' então é necessário trabalhar com a
+tabela 'desafios_modalidades_alunos_progressos' para atualizar os treinos para uma mesma modalidade. Caso o tipo seja qualquer outro, então segue para a tabela
+'desafios_alunos'.
+2) Se tipo de desafio for para desafios de treinos da mesma modalidade:
+2.1) Busca o ultimo desafio não concluido para aquela modalidade informada.
+2.2) Se o aluno concluiu todos os desafios, então recebe uma pontuação já pré-fixada.
+2.3) Se não, atualiza em +1 a contagem de registros do aluno para o desafio atual.
+2.4) Verifica se após a atualização, o aluno completou o desafio. Se completou, então adiciona pontos através da procedure 'pd_add_pontos'.
+3) Se tipo de desafio for qualquer que não treinos da mesma modalidade:
+3.1) Busca o ultimo desafio não concluido para aquela modalidade informada.
+3.2) Se o aluno concluiu todos os desafios, então recebe uma pontuação já pré-fixada.
+3.3) Se não, atualiza em +1 a contagem de registros do aluno para o desafio atual.
+3.4) Verifica se após a atualização, o aluno completou o desafio. Se completou, então adiciona pontos através da procedure 'pd_add_pontos'.
+4) Se não encontrar nenhum desafio em aberto para o aluno, significa que o desafio informado é um desafio reiniciavel.
+5) Reinicia o desafio se caso seja reiniciavel e o aluno já tenha concluido todos os desafios.
+
+*/
+
+create or replace procedure pd_desafios_alunos
+	(
+		pd_id_aluno      in number,
+		pd_desafio_tipo  in number,
+		pd_id_modalidade in number
+	) as
+		pd_desafio_id       number;
+		pd_qtd_requer       number;
+		pd_pontos           number;
+		pd_progresso_atual  number := 0;
+		pd_concluido        char(1) := 'N';
+		pd_desafio_desc     varchar2(100);
+
+		begin
+
+			-- Se usar modalidade, segue aqui para 'DESAFIOS_MODALIDADES_ALUNOS_PROGRESSOS'
+			if pd_desafio_tipo = 41 then
+
+				-- Busca o ultimo desafio não concluido
+				begin
+					select a.id_desafio, a.qtd_requer, a.pontos, a.desafio_desc into pd_desafio_id, pd_qtd_requer, pd_pontos, pd_desafio_desc
+					from DESAFIOS a
+					where a.id_tipo = pd_desafio_tipo
+						  and not exists
+							(select 1
+							 from DESAFIOS_MODALIDADES_ALUNOS_PROGRESSOS b
+							 where b.id_desafio = a.id_desafio
+								   and b.id_aluno = pd_id_aluno
+								   and b.id_modalidade = pd_id_modalidade
+								   and b.concluido = 'S'
+							)
+					order by a.qtd_requer
+					fetch first 1 rows only;
+
+				-- Aluno concluiu todos os desafios, agora recebe pontos por registro infinitamente
+				exception
+					when no_data_found then
+						pd_add_pontos(pd_id_aluno, 20);
+						return;
+				end;
+
+				-- Atualiza progresso do aluno
+				merge into DESAFIOS_MODALIDADES_ALUNOS_PROGRESSOS a
+				using (select pd_id_aluno,
+							  pd_id_modalidade,
+							  pd_desafio_id as id_desafio
+					   from dual
+					  ) b
+				on (a.id_aluno = b.id_aluno
+					and a.id_modalidade = b.id_modalidade
+					and a.id_desafio = b.id_desafio)
+				when matched then
+					update set a.progresso = a.progresso + 1,
+							   a.dt_atualizado = sysdate
+				when not matched then
+					insert (id_desafio, id_modalidade, id_aluno, progresso, concluido, dt_atualizado)
+					values (b.id_desafio, b.id_modalidade, b.id_aluno, 1, 'N', sysdate);
+
+				-- Verifica o progresso atual
+				select a.progresso, a.concluido into pd_progresso_atual, pd_concluido
+				from DESAFIOS_MODALIDADES_ALUNOS_PROGRESSOS a
+				where a.id_desafio = pd_desafio_id
+					  and a.id_aluno = pd_id_aluno
+					  and a.id_modalidade = pd_id_modalidade;
+
+				-- Se concluiu o desafio, atualiza o 'concluido' e atribui os pontos
+				if pd_progresso_atual >= pd_qtd_requer and pd_concluido = 'N' then
+					update DESAFIOS_MODALIDADES_ALUNOS_PROGRESSOS a
+					set concluido = 'S',
+						dt_atualizado = sysdate
+					where a.id_desafio = pd_desafio_id
+						  and a.id_aluno = pd_id_aluno
+						  and a.id_modalidade = pd_id_modalidade;
+
+					pd_add_pontos(pd_id_aluno, pd_pontos);
+					dbms_output.put_line('Desafio '||pd_desafio_desc|| concluído com sucesso.);
+				end if;
+
+			-- Se não usar modalidade, segue aqui para 'DESAFIOS_ALUNOS'
+			else
+
+				-- Busca o ultimo desafio não concluido
+				begin
+					select a.id_desafio, a.qtd_requer, a.pontos, a.desafio_desc into pd_desafio_id, pd_qtd_requer, pd_pontos, pd_desafio_desc
+					from DESAFIOS a
+					where a.id_desafio = pd_desafio_tipo
+						  and not exists
+							(select 1
+							 from DESAFIOS_ALUNOS b
+							 where b.id_desafio = a.id_desafio
+								   and b.id_aluno = pd_id_aluno
+								   and b.concluido = 'S')
+					order by a.qtd_requer
+					fetch first 1 rows only;
+
+					-- Se encontrar, atualiza o progresso do aluno no desafio
+						merge into DESAFIOS_ALUNOS a
+						using (select pd_id_aluno as id_aluno,
+									  pd_desafio_id as id_desafio,
+							   from dual) b
+						on (a.id_aluno = b.id_aluno
+							and a.id_desafio = b.id_desafio)
+						when matched then
+							update set a.progresso = a.progresso + 1,
+									   a.dt_atualizado = sysdate
+						when not matched then
+							insert (id_desafio, id_aluno, progresso, concluido, dt_atualizado)
+							values (b.id_desafio, b.id_aluno, 1, 'N', sysdate);
+
+						-- Busca o progresso atual após atualizar
+						select a.progresso, a.concluido into pd_progresso_atual, pd_concluido
+						from DESAFIOS_ALUNOS a
+						where a.id_desafio = pd_desafio_id
+							  and a.id_aluno = pd_id_aluno;
+
+						-- Se concluiu o desafio, atribui os pontos e atualiza 'concluido'
+						if pd_progresso_atual >= pd_qtd_requer and pd_concluido = 'N' then
+							update DESAFIOS_ALUNOS a
+							set a.concluido = 'S',
+								a.dt_atualizado = sysdate
+							where a.id_desafio = pd_desafio_id
+								  and a.id_aluno = pd_id_aluno;
+
+							pd_add_pontos(pd_id_aluno, pd_pontos);
+							dbms_output.put_line('Desafio '||pd_desafio_desc|| concluído com sucesso.);
+						end if;
+
+				-- Se não encontrar nenhum não concluido, verifica se o desafio é 'finito' ou 'infinito'
+				exception
+					when no_data_found then
+						declare
+							pd_reinica           char(1);
+							pd_desafio_tipo_desc varchar2(50);
+
+						begin
+
+							select a.reinicia, a.tipo_desc into pd_reinicia, pd_desafio_tipo_desc
+							from DESAFIOS_TIPOS a
+							where a.id_tipo_desafio = pd_desafio_tipo;
+
+							-- Se for 'Finito', reseta o progresso completo
+							if pd_reinicia = 'S' then
+								update DESAFIOS_ALUNOS a
+								set a.progresso = 0,
+									a.concluido = 'N',
+									a.dt_atualizado = sysdate
+								where a.id_aluno = pd_id_aluno
+									and a.id_desafio in
+										(select b.id_desafio
+										 from DESAFIOS b
+										 where b.id_tipo = pd_desafio_tipo);
+
+								dbms_output.put_line('Desafios do tipo '||pd_desafio_tipo_desc|| ' reiniciados.');
+
+								-- Atualiza o progresso desse desafio
+								merge into DESAFIOS_ALUNOS a
+								using (select pd_id_aluno as id_aluno,
+											  pd_desafio_id as id_desafio
+										from dual) b
+								on (a.id_aluno = b.id_aluno,
+									and a.id_desafio = b.id_desafio)
+								when matched then
+									update set a.progresso = a.progresso + 1,
+											   a.dt_atualizado = sysdate
+								when not matched then
+									insert (id_desafio, id_aluno, progresso, concluido, dt_atualizado)
+									values (b.id_desafio, b.id_aluno, 1, 'N', sysdate);
+
+							-- Se for 'Infinito', apenas adiciona os pontos pelo registro
+							else
+								select a.pontos into pd_pontos
+								from DESAFIOS a
+								where a.id_tipo = pd_desafio_tipo
+								order by a.qtd_requer desc
+								fetch first 1 rows only;
+
+								pd_add_pontos(pd_id_aluno, pd_pontos);
+
+							end if;
+						end;
+					return;
+				end;
+			end if;
+		end;

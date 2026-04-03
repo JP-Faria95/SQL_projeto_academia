@@ -1,0 +1,28 @@
+/*
+A trigger tg_alunos_atualiza_proxpagamento tem como função buscar na tabela de 'matriculas' e 'planos' o valor e a recorrência do plano de um determinado aluno.
+
+Após a busca, a trigger chama as funções 'fn_alunos_calcula_dtproxpagamento' e 'fn_alunos_calcula_valorproxpagamento' utilizando os dados encontrados como
+parâmetros.
+*/
+
+create or replace trigger tg_alunos_atualiza_dtproxpagamento
+	before insert on pagamentos
+	for each row
+	declare
+		tg_plano_duracao number;
+		tg_plano_valor   number;
+	begin
+
+		-- Buscar a duracao do plano do aluno
+			select b.duracao_mes, b.valor_r$ into tg_plano_duracao,tg_plano_valor
+			from MATRICULAS a
+			join PLANOS b on a.id_plano = b.id_plano
+			where a.id_matricula = :NEW.id_matricula;
+
+		-- Calcula a data do proximo pagamento
+			:NEW.dt_proximo_pag := fn_alunos_calcula_dtproxpagamento(:NEW.dt_pagamento,tg_plano_duracao);
+
+		-- Calcula o valor do proximo pagamento
+			:NEW.valor_proximo_pag := fn_alunos_calcula_valorproxpagamento(tg_plano_valor);
+			
+	end tg_alunos_atualiza_dtproxpagamento;

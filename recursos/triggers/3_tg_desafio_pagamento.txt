@@ -1,0 +1,14 @@
+/*
+A trigger tg_desafio_pagamento tem como funcão automatizar a chamada da procedure 'pd_desafios_alunos' passando como parâmetro o Id do desafio de pagamentos
+(padronizado em 8 para este projeto), sempre que um pagamento for registrado para um aluno na tabela 'pagamentos'.
+
+Dessa forma a trigger consegue manter o sistema de pontuação ativo para quando os alunos realizarem pagamentos.
+*/
+
+create or replace trigger tg_desafio_pagamento
+	after insert on PAGAMENTOS
+	for each row
+		begin
+			-- Passa pd_desafio_tipo como = 8
+			pd_desafios_alunos(:NEW.id_aluno, 8);
+		end tg_desafio_pagamento;
